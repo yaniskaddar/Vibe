@@ -1,0 +1,6 @@
+{
+  "name": "Vibe",
+  "description": "Social media & creative studio app with photo/carousel feed, 24h stories, reels, explore polls, direct messaging, moodboards, and Gemini AI creative tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

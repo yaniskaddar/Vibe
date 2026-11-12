@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Vibe</string>
+    <string name="vibe_tagline">Capture, remix, and share your world.</string>
+    <string name="vibe_makers_credit">Created by Yanis.Kaddar &amp; Mauro Langendries</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="sign_out">Sign out</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_explore">Explore</string>
+    <string name="nav_create">Create</string>
+    <string name="nav_reels">Reels</string>
+    <string name="nav_profile">Profile</string>
+    <string name="messages_title">Messages</string>
+    <string name="notifications_title">Activity</string>
+    <string name="your_story">Your Story</string>
+    <string name="empty_feed_title">Your Vibe feed is waiting</string>
+    <string name="empty_feed_subtitle">Share a photo, start a community poll, or craft AI artwork in Create Studio.</string>
+    <string name="create_now">Create first post</string>
+    <string name="magic_caption_cta">Magic AI Captions</string>
+    <string name="ai_art_generate_cta">Generate AI Artwork</string>
+    <string name="ai_art_remix_cta">Remix Selected Photo</string>
+    <string name="publish_cta">Share to Vibe</string>
+    <string name="edit_profile">Edit profile</string>
+    <string name="save_changes">Save changes</string>
+</resources>

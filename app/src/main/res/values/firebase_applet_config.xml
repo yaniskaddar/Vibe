@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<resources>
+    <string name="firestore_database_id" translatable="false">ai-studio-android-vibe-39c27958-ab61-4ac1-8bd1-0ca8ac6d2b0e</string>
+    <string name="recaptcha_site_key" translatable="false">6LdWFR0uAAAAAKVWI6vSHfvQzCiUxWDKBcYRXMbn</string>
+</resources>

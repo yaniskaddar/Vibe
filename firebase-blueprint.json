@@ -1,0 +1,212 @@
+{
+  "entities": {
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Public creator profile visible across the Vibe social network without exposing private PII.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the profile owner" },
+        "handle": { "type": "string", "description": "Unique creator handle without @ prefix" },
+        "displayName": { "type": "string", "description": "Public display name" },
+        "bio": { "type": "string", "description": "Short creator biography" },
+        "avatarData": { "type": "string", "description": "Compressed Base64 data URI or remote avatar URL" },
+        "isDiscoverable": { "type": "boolean", "description": "Whether the profile appears in public discovery" },
+        "followersCount": { "type": "integer", "description": "Total follower count" },
+        "followingCount": { "type": "integer", "description": "Total following count" },
+        "postsCount": { "type": "integer", "description": "Total posts published" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "handle", "displayName", "isDiscoverable", "followersCount", "followingCount", "postsCount", "createdAt", "updatedAt"]
+    },
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Private user account record isolating PII such as email.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "Private Google account email" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "createdAt", "updatedAt"]
+    },
+    "MoodboardCollection": {
+      "title": "MoodboardCollection",
+      "description": "User-owned saved collection / moodboard of bookmarked post IDs.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner UID" },
+        "name": { "type": "string", "description": "Collection name" },
+        "postIds": { "type": "array", "description": "Bounded list of saved post IDs" },
+        "coverPayload": { "type": "string", "description": "Optional compressed Base64 cover image" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "name", "postIds", "createdAt", "updatedAt"]
+    },
+    "FollowRelation": {
+      "title": "FollowRelation",
+      "description": "Directed follow relationship from followerId to targetId.",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string", "description": "UID of follower" },
+        "targetId": { "type": "string", "description": "UID of followed creator" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["followerId", "targetId", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Social post supporting photos, carousels, reels, polls, and AI Studio creations.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "description": "Author UID" },
+        "authorHandle": { "type": "string", "description": "Denormalized author handle" },
+        "authorAvatar": { "type": "string", "description": "Denormalized author avatar payload" },
+        "visibility": { "type": "string", "enum": ["public", "private"], "description": "Post visibility" },
+        "mediaType": { "type": "string", "enum": ["photo", "carousel", "reel", "poll", "ai_art"], "description": "Format type" },
+        "mediaPayloads": { "type": "array", "description": "Bounded list of compressed Base64 image frames" },
+        "localVideoPath": { "type": "string", "description": "Optional on-device cached Reel video path" },
+        "filterPreset": { "type": "string", "description": "Color filter preset name" },
+        "caption": { "type": "string", "description": "Post caption text" },
+        "hashtags": { "type": "array", "description": "Bounded list of hashtags" },
+        "pollQuestion": { "type": "string", "description": "Optional poll question" },
+        "pollOptions": { "type": "array", "description": "Bounded list of poll option labels" },
+        "pollCounts": { "type": "array", "description": "Bounded list of integer vote counts" },
+        "likesCount": { "type": "integer", "description": "Total likes count" },
+        "commentsCount": { "type": "integer", "description": "Total comments count" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["authorId", "authorHandle", "visibility", "mediaType", "mediaPayloads", "caption", "hashtags", "likesCount", "commentsCount", "createdAt", "updatedAt"]
+    },
+    "PostLike": {
+      "title": "PostLike",
+      "description": "Single-user like marker on a post.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of liker" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "PostComment": {
+      "title": "PostComment",
+      "description": "User comment on a post.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "description": "Comment author UID" },
+        "authorHandle": { "type": "string", "description": "Comment author handle" },
+        "authorAvatar": { "type": "string", "description": "Comment author avatar" },
+        "visibility": { "type": "string", "enum": ["public"], "description": "Visibility state" },
+        "text": { "type": "string", "description": "Comment body" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["authorId", "authorHandle", "visibility", "text", "createdAt"]
+    },
+    "PollVote": {
+      "title": "PollVote",
+      "description": "Single-user vote selection on a poll post.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Voter UID" },
+        "optionIndex": { "type": "integer", "description": "Selected option index" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "optionIndex", "createdAt"]
+    },
+    "Story": {
+      "title": "Story",
+      "description": "Ephemeral 24-hour story frame.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "description": "Author UID" },
+        "authorHandle": { "type": "string", "description": "Author handle" },
+        "authorAvatar": { "type": "string", "description": "Author avatar" },
+        "visibility": { "type": "string", "enum": ["public"], "description": "Visibility state" },
+        "mediaPayload": { "type": "string", "description": "Compressed Base64 image payload" },
+        "captionOverlay": { "type": "string", "description": "Optional text overlay" },
+        "moodTag": { "type": "string", "description": "Optional mood badge" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "24h expiration timestamp" }
+      },
+      "required": ["authorId", "authorHandle", "visibility", "mediaPayload", "createdAt", "expiresAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Direct or group messaging conversation thread.",
+      "type": "object",
+      "properties": {
+        "participantIds": { "type": "array", "description": "Bounded list of participant UIDs" },
+        "participantHandles": { "type": "array", "description": "Bounded list of participant handles" },
+        "lastMessage": { "type": "string", "description": "Preview of most recent message" },
+        "lastSenderId": { "type": "string", "description": "UID of last message sender" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["participantIds", "participantHandles", "lastMessage", "lastSenderId", "createdAt", "updatedAt"]
+    },
+    "DirectMessage": {
+      "title": "DirectMessage",
+      "description": "Individual message inside a conversation with denormalized participantIds.",
+      "type": "object",
+      "properties": {
+        "participantIds": { "type": "array", "description": "Denormalized participant UIDs from parent conversation" },
+        "senderId": { "type": "string", "description": "Sender UID" },
+        "senderHandle": { "type": "string", "description": "Sender handle" },
+        "text": { "type": "string", "description": "Message text" },
+        "mediaPayload": { "type": "string", "description": "Optional compressed Base64 image attachment" },
+        "sharedPostId": { "type": "string", "description": "Optional shared post ID" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["participantIds", "senderId", "senderHandle", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/public_profiles/{userId}": {
+      "schema": { "$ref": "#/entities/PublicProfile" },
+      "description": "Discoverable public creator profiles"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Private user PII and account metadata"
+    },
+    "/users/{userId}/collections/{collectionId}": {
+      "schema": { "$ref": "#/entities/MoodboardCollection" },
+      "description": "User-owned saved moodboard collections"
+    },
+    "/follows/{followId}": {
+      "schema": { "$ref": "#/entities/FollowRelation" },
+      "description": "Follower-to-creator links keyed by followerId_targetId"
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Social feed posts, carousels, reels, polls, and AI Studio art"
+    },
+    "/posts/{postId}/likes/{userId}": {
+      "schema": { "$ref": "#/entities/PostLike" },
+      "description": "Post likes keyed by liker UID"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/PostComment" },
+      "description": "Comments on posts"
+    },
+    "/posts/{postId}/pollVotes/{userId}": {
+      "schema": { "$ref": "#/entities/PollVote" },
+      "description": "Poll votes keyed by voter UID"
+    },
+    "/stories/{storyId}": {
+      "schema": { "$ref": "#/entities/Story" },
+      "description": "24-hour ephemeral stories"
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/Conversation" },
+      "description": "Direct messaging threads"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/DirectMessage" },
+      "description": "Messages inside a conversation"
+    }
+  }
+}
