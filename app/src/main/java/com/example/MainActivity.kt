@@ -67,6 +67,7 @@ import com.example.ui.components.SharePostBottomSheet
 import com.example.ui.screens.AuthScreen
 import com.example.ui.screens.CameraScreen
 import com.example.ui.screens.CreateStudioScreen
+import com.example.ui.screens.ExplorePollsScreen
 import com.example.ui.screens.ExploreScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.MessagesScreen
@@ -86,6 +87,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 const val ROUTE_HOME = "home"
 const val ROUTE_EXPLORE = "explore"
+const val ROUTE_EXPLORE_POLLS = "explore_polls"
 const val ROUTE_CREATE = "create"
 const val ROUTE_REELS = "reels"
 const val ROUTE_PROFILE = "profile"
@@ -201,6 +203,7 @@ private fun VibeAppShell(user: FirebaseUser) {
     val followingIds by socialViewModel.followingIds.collectAsStateWithLifecycle()
     val collections by socialViewModel.myCollections.collectAsStateWithLifecycle()
     val myPollVotes by socialViewModel.myPollVotes.collectAsStateWithLifecycle()
+    val isPublishingPoll by socialViewModel.isPublishingPoll.collectAsStateWithLifecycle()
     val selectedCommentsPostId by socialViewModel.selectedCommentsPostId.collectAsStateWithLifecycle()
     val comments by socialViewModel.commentsForSelectedPost.collectAsStateWithLifecycle()
     val feedback by socialViewModel.actionFeedback.collectAsStateWithLifecycle()
@@ -229,6 +232,10 @@ private fun VibeAppShell(user: FirebaseUser) {
     val showChromeNav = currentRoute != ROUTE_MESSAGES && currentRoute != ROUTE_CAMERA
 
     fun navigateToTab(route: String) {
+        if (route == ROUTE_EXPLORE && currentRoute == ROUTE_EXPLORE_POLLS) {
+            navController.popBackStack(ROUTE_EXPLORE, inclusive = false)
+            return
+        }
         navController.navigate(route) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = true
@@ -250,7 +257,8 @@ private fun VibeAppShell(user: FirebaseUser) {
                         containerColor = MaterialTheme.colorScheme.background
                     ) {
                         vibeNavTabs.forEach { tab ->
-                            val selected = currentRoute == tab.route
+                            val selected = currentRoute == tab.route ||
+                                (tab.route == ROUTE_EXPLORE && currentRoute == ROUTE_EXPLORE_POLLS)
                             val label = stringResource(tab.labelRes)
                             NavigationBarItem(
                                 selected = selected,
@@ -279,7 +287,8 @@ private fun VibeAppShell(user: FirebaseUser) {
                         containerColor = MaterialTheme.colorScheme.background
                     ) {
                         vibeNavTabs.forEach { tab ->
-                            val selected = currentRoute == tab.route
+                            val selected = currentRoute == tab.route ||
+                                (tab.route == ROUTE_EXPLORE && currentRoute == ROUTE_EXPLORE_POLLS)
                             val label = stringResource(tab.labelRes)
                             NavigationRailItem(
                                 selected = selected,
@@ -388,6 +397,51 @@ private fun VibeAppShell(user: FirebaseUser) {
                                 onShare = { post -> postToShare = post },
                                 onSave = { post -> postToSave = post },
                                 onVotePoll = socialViewModel::castPollVote,
+                                onDeletePost = socialViewModel::deletePost,
+                                onOpenPollsFeed = { navController.navigate(ROUTE_EXPLORE_POLLS) }
+                            )
+                        }
+
+                        composable(ROUTE_EXPLORE_POLLS) {
+                            ExplorePollsScreen(
+                                currentUserId = uid,
+                                feedState = feedState,
+                                likedPostIds = likedPostIds,
+                                followingIds = followingIds,
+                                collections = collections,
+                                myPollVotes = myPollVotes,
+                                isPublishingPoll = isPublishingPoll,
+                                onBack = { navController.popBackStack() },
+                                onPublishPoll = { question, options, caption, hashtags, onSuccess ->
+                                    socialViewModel.createPoll(
+                                        question = question,
+                                        options = options,
+                                        caption = caption,
+                                        hashtagsText = hashtags,
+                                        onSuccess = onSuccess
+                                    )
+                                },
+                                onVotePoll = socialViewModel::castPollVote,
+                                onLike = socialViewModel::toggleLike,
+                                onComment = { post -> socialViewModel.openComments(post.id) },
+                                onShare = { post -> postToShare = post },
+                                onSave = { post -> postToSave = post },
+                                onAuthorClick = { authorId ->
+                                    if (authorId == uid) {
+                                        navigateToTab(ROUTE_PROFILE)
+                                    } else {
+                                        val peer = allProfiles.firstOrNull { it.userId == authorId }
+                                        if (peer != null) {
+                                            messagesViewModel.startDirectChat(
+                                                myHandle = myProfile?.handle ?: "creator",
+                                                target = peer
+                                            ) {
+                                                navController.navigate(ROUTE_MESSAGES)
+                                            }
+                                        }
+                                    }
+                                },
+                                onFollowClick = socialViewModel::toggleFollow,
                                 onDeletePost = socialViewModel::deletePost
                             )
                         }

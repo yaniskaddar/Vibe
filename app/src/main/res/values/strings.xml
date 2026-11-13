@@ -21,4 +21,7 @@
     <string name="publish_cta">Share to Vibe</string>
     <string name="edit_profile">Edit profile</string>
     <string name="save_changes">Save changes</string>
+    <string name="explore_polls_title">Explore Polls</string>
+    <string name="explore_polls_subtitle">Vote on trending prompts or launch your own</string>
+    <string name="create_poll_cta">Publish Poll</string>
 </resources>

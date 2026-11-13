@@ -103,6 +103,9 @@ class SocialViewModel(
     private val _actionFeedback = MutableStateFlow<String?>(null)
     val actionFeedback: StateFlow<String?> = _actionFeedback.asStateFlow()
 
+    private val _isPublishingPoll = MutableStateFlow(false)
+    val isPublishingPoll: StateFlow<Boolean> = _isPublishingPoll.asStateFlow()
+
     init {
         viewModelScope.launch {
             repository.ensureUserBootstrapped(
@@ -124,12 +127,14 @@ class SocialViewModel(
                 if (repository.isPostLikedByMe(post.id)) {
                     liked.add(post.id)
                 }
-                if (post.mediaType == "poll") {
+            }
+            posts.filter { it.mediaType == "poll" || it.pollQuestion.isNotBlank() }
+                .take(30)
+                .forEach { post ->
                     repository.getMyPollVote(post.id)?.let { choice ->
                         pollVotes[post.id] = choice
                     }
                 }
-            }
             _likedPostIds.value = _likedPostIds.value + liked
             _myPollVotes.value = _myPollVotes.value + pollVotes
         }
@@ -182,6 +187,52 @@ class SocialViewModel(
             repository.castPollVote(postId, optionIndex).onFailure { e ->
                 _myPollVotes.value = _myPollVotes.value - postId
                 _actionFeedback.value = e.unwrapFirestoreMessage("Vote could not be recorded.")
+            }
+        }
+    }
+
+    fun createPoll(
+        question: String,
+        options: List<String>,
+        caption: String = "",
+        hashtagsText: String = "",
+        onSuccess: () -> Unit = {}
+    ) {
+        val cleanQuestion = question.trim().take(200)
+        val cleanOptions = options.map { it.trim().take(80) }.filter { it.isNotBlank() }.take(4)
+        if (cleanQuestion.isEmpty() || cleanOptions.size < 2) {
+            _actionFeedback.value = "Enter a poll question and at least 2 options."
+            return
+        }
+        val parsedTags = hashtagsText
+            .split(Regex("[\\s,]+"))
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .map { if (it.startsWith("#")) it else "#$it" }
+            .take(10)
+
+        val profile = myProfile.value
+        val handle = profile?.handle?.ifBlank { "creator" } ?: "creator"
+        val avatar = profile?.avatarData.orEmpty()
+
+        viewModelScope.launch {
+            _isPublishingPoll.value = true
+            repository.createPost(
+                authorHandle = handle,
+                authorAvatar = avatar,
+                mediaType = "poll",
+                mediaPayloads = emptyList(),
+                caption = caption.trim().ifBlank { cleanQuestion },
+                hashtags = parsedTags,
+                pollQuestion = cleanQuestion,
+                pollOptions = cleanOptions
+            ).onSuccess {
+                _isPublishingPoll.value = false
+                _actionFeedback.value = "Poll published to Vibe!"
+                onSuccess()
+            }.onFailure { e ->
+                _isPublishingPoll.value = false
+                _actionFeedback.value = e.unwrapFirestoreMessage("Could not publish poll.")
             }
         }
     }

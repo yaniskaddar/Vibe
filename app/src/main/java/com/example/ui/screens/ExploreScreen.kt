@@ -25,12 +25,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Poll
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -62,7 +65,9 @@ import com.example.data.model.UiState
 import com.example.ui.components.PostCard
 import com.example.ui.components.VibeAvatar
 import com.example.ui.components.VibeMediaImage
+import com.example.ui.theme.VibeMagenta
 import com.example.ui.theme.VibeSocialBlue
+import com.example.ui.theme.VibeStudioGradient
 
 private val exploreCategories = listOf("For You", "Photos", "AI Studio", "Polls", "Reels")
 
@@ -83,7 +88,8 @@ fun ExploreScreen(
     onShare: (Post) -> Unit,
     onSave: (Post) -> Unit,
     onVotePoll: (String, Int) -> Unit,
-    onDeletePost: (String) -> Unit
+    onDeletePost: (String) -> Unit,
+    onOpenPollsFeed: () -> Unit = {}
 ) {
     var query by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("For You") }
@@ -91,6 +97,12 @@ fun ExploreScreen(
 
     val allPosts = (feedState as? UiState.Success)?.data.orEmpty()
     val savedIds = remember(collections) { collections.flatMap { it.postIds }.toSet() }
+    val pollPosts = remember(allPosts) {
+        allPosts.filter { it.mediaType == "poll" || it.pollQuestion.isNotBlank() }
+    }
+    val topTrendingPoll = remember(pollPosts) {
+        pollPosts.maxByOrNull { it.pollCounts.sum() * 3L + it.likesCount * 2L + it.commentsCount }
+    }
 
     val filteredPosts = remember(allPosts, query, selectedCategory) {
         allPosts.filter { post ->
@@ -120,26 +132,61 @@ fun ExploreScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search Bar
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            placeholder = { Text("Search creators, #tags, polls, AI art...") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = "" }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Clear search")
-                    }
-                }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
+        // Search Bar + Quick Polls Feed Shortcut
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-                .testTag("explore_search_input")
-        )
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Search creators, #tags, polls, AI art...") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("explore_search_input")
+            )
+            Surface(
+                color = VibeSocialBlue.copy(alpha = 0.14f),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable(onClick = onOpenPollsFeed)
+                    .minimumInteractiveComponentSize()
+                    .testTag("explore_polls_shortcut")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Poll,
+                        contentDescription = "Open Explore Polls",
+                        tint = VibeSocialBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Polls",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = VibeSocialBlue,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
 
         // Category Filter Chips
         LazyRow(
@@ -164,6 +211,79 @@ fun ExploreScreen(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
+            if (selectedCategory == "For You" || selectedCategory == "Polls") {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "explore_polls_banner") {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 2.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .clickable(onClick = onOpenPollsFeed)
+                            .testTag("open_explore_polls_button")
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .background(VibeStudioGradient)
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                                            contentDescription = null,
+                                            tint = VibeMagenta,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Trending Polls & Poll Tool",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = topTrendingPoll?.pollQuestion?.let {
+                                            "Hot now: \"$it\""
+                                        } ?: "Create community polls & vote on trending prompts (${pollPosts.size} live)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Button(
+                                    onClick = onOpenPollsFeed,
+                                    colors = ButtonDefaults.buttonColors(containerColor = VibeSocialBlue),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.minimumInteractiveComponentSize()
+                                ) {
+                                    Text(
+                                        text = "Open",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             if (matchingCreators.isNotEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "creators_header") {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {

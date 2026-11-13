@@ -1,6 +1,8 @@
 package com.example.ui.components
 
 import android.graphics.Bitmap
+import android.net.Uri
+import android.view.TextureView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -37,6 +39,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
@@ -44,6 +48,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Poll
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.BookmarkBorder
@@ -64,6 +69,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +84,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -86,6 +93,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
 import com.example.core.FilterPreset
 import com.example.core.ImageUtils
@@ -101,6 +112,7 @@ import com.google.firebase.Timestamp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -359,28 +371,129 @@ fun PostCard(
             }
         }
 
-        // Media Carousel / Single Photo with Double-Tap Heart
-        if (post.mediaPayloads.isNotEmpty()) {
+        // Media Content (Video Reel / Photo Carousel / Single Photo) with Double-Tap Heart
+        val isVideoPost = post.mediaType == "reel"
+        val hasLocalVideo = remember(post.localVideoPath) {
+            post.localVideoPath.isNotBlank() && File(post.localVideoPath).exists()
+        }
+        var isPlayingVideo by remember(post.id) { mutableStateOf(false) }
+        var isVideoMuted by remember(post.id) { mutableStateOf(false) }
+
+        if (post.mediaPayloads.isNotEmpty() || (isVideoPost && hasLocalVideo)) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .pointerInput(post.id, isLiked) {
+                    .background(Color.Black)
+                    .pointerInput(post.id, isLiked, isVideoPost, hasLocalVideo) {
                         detectTapGestures(
                             onDoubleTap = {
                                 showDoubleTapHeart = true
                                 if (!isLiked) onLike()
+                            },
+                            onTap = {
+                                if (isVideoPost && hasLocalVideo) {
+                                    isPlayingVideo = !isPlayingVideo
+                                }
                             }
                         )
                     }
             ) {
-                if (post.mediaPayloads.size == 1) {
-                    VibeMediaImage(
-                        payload = post.mediaPayloads.first(),
-                        filterPreset = post.filterPreset,
-                        contentDescription = post.caption.ifBlank { "Vibe photo by @${post.authorHandle}" },
+                if (isVideoPost && hasLocalVideo && isPlayingVideo) {
+                    val context = LocalContext.current
+                    val exoPlayer = remember(post.localVideoPath) {
+                        ExoPlayer.Builder(context).build().apply {
+                            setMediaItem(MediaItem.fromUri(Uri.fromFile(File(post.localVideoPath))))
+                            repeatMode = Player.REPEAT_MODE_ALL
+                            prepare()
+                            playWhenReady = true
+                        }
+                    }
+                    LaunchedEffect(isVideoMuted) {
+                        exoPlayer.volume = if (isVideoMuted) 0f else 1f
+                    }
+                    DisposableEffect(exoPlayer) {
+                        onDispose { exoPlayer.release() }
+                    }
+                    AndroidView(
+                        factory = { ctx ->
+                            TextureView(ctx).also { tv ->
+                                exoPlayer.setVideoTextureView(tv)
+                            }
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.55f),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(12.dp)
+                            .clickable { isVideoMuted = !isVideoMuted }
+                    ) {
+                        Icon(
+                            imageVector = if (isVideoMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = if (isVideoMuted) "Unmute video" else "Mute video",
+                            tint = Color.White,
+                            modifier = Modifier.padding(8.dp).size(18.dp)
+                        )
+                    }
+                } else if (post.mediaPayloads.size <= 1) {
+                    val payload = post.mediaPayloads.firstOrNull().orEmpty()
+                    if (payload.isNotBlank()) {
+                        VibeMediaImage(
+                            payload = payload,
+                            filterPreset = post.filterPreset,
+                            contentDescription = post.caption.ifBlank { "Vibe media by @${post.authorHandle}" },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    if (isVideoPost) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Movie,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "VIDEO",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        if (hasLocalVideo) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.6f),
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(64.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Filled.PlayArrow,
+                                        contentDescription = "Play video",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(34.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 } else {
                     val pagerState = rememberPagerState(pageCount = { post.mediaPayloads.size })
                     HorizontalPager(
